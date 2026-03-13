@@ -1,0 +1,72 @@
+name: Build & Release on merge to main
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  build-and-release:
+    if: |
+      github.event.pull_request.merged == true &&
+      (
+        startsWith(github.event.pull_request.head.ref, 'feature/') ||
+        startsWith(github.event.pull_request.head.ref, 'bugfix/')
+      )
+    runs-on: ubuntu-latest
+
+    environment: release
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Build release distributions
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install poetry==2.1.1
+          poetry build
+
+      - name: Upload distributions as workflow artefact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-dists
+          path: dist/
+
+      - name: Read project version
+        id: project_version
+        run: echo "version=$(poetry version -s)" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: "v${{ steps.project_version.outputs.version }}"
+          name: "v${{ steps.project_version.outputs.version }}"
+          body: |
+            Automatic release created for PR #${{ github.event.pull_request.number }}.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload dists to release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: "v${{ steps.project_version.outputs.version }}"
+          files: |
+            dist/*.whl
+            dist/*.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish to PyPI (trusted publishing)
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/
+
