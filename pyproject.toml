@@ -1,0 +1,23 @@
+[project]
+name = "admin-toolbox"
+version = "0.1.0"
+description = "A collection of administration utility tools for various services."
+authors = [
+    {name = "przemek@sagalo.pro"}
+]
+readme = "README.md"
+
+requires-python = ">=3.11"
+
+dependencies = [
+    "jira==3.8.0",
+    "click==8.1.7",
+    "python-dotenv==1.0.1"
+]
+
+[project.scripts]
+admin-toolbox = "admin_toolbox.cli:main"
+
+[build-system]
+requires = ["setuptools >= 79.0.1"]
+build-backend = "setuptools.build_meta"
