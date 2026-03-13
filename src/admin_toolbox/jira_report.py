@@ -1,16 +1,5 @@
 import os
-from datetime import datetime, timedelta
 from jira import JIRA
-from collections import defaultdict
-
-def get_week_range(date_obj):
-    # Determine the start (Monday) and end (Sunday) of the week
-    start_of_week = date_obj - timedelta(days=date_obj.weekday())
-    end_of_week = start_of_week + timedelta(days=6)
-    return (
-        start_of_week.strftime('%d-%m-%Y'),
-        end_of_week.strftime('%d-%m-%Y')
-    )
 
 def fetch_and_export_jira_issues(projects, start_date, end_date, output_file):
     jira_url = os.environ.get('JIRA_URL')
@@ -24,39 +13,34 @@ def fetch_and_export_jira_issues(projects, start_date, end_date, output_file):
     
     # Construct JQL query
     project_list_str = ", ".join([f'"{p}"' for p in projects])
+    
+    # JQL with full filtration for open/closed tasks
     jql = (
         f'project in ({project_list_str}) AND '
-        f'issuetype in (Task, Epic, Story) AND '
-        f'created >= "{start_date}" AND created <= "{end_date}" AND '
-        f'assignee = currentUser() ORDER BY created ASC'
+        f'assignee = currentUser() AND '
+        f'status != "Cancelled" AND '
+        f'(status != "Done" OR (status = "Done" AND resolutiondate >= "{start_date}" AND resolutiondate <= "{end_date} 23:59")) '
+        f'ORDER BY status ASC, created ASC'
     )
 
     # Fetch issues
     issues = jira.search_issues(jql, maxResults=False)
-    grouped_issues = defaultdict(list)
+    
+    if not issues:
+        with open(output_file, 'w', encoding='utf-8') as f:
+            f.write("No issues found for the specified criteria.\n")
+        return
 
-    for issue in issues:
-        created_date = datetime.strptime(issue.fields.created.split('T')[0], '%Y-%m-%d')
-        week_start, week_end = get_week_range(created_date)
-        week_key = f"{week_start} - {week_end}"
-        grouped_issues[week_key].append(issue)
+    # Find the maximum status length for padding to ensure same size for all rows
+    max_status_len = max(len(issue.fields.status.name) for issue in issues)
 
-    # Sort weeks chronologically
-    sorted_weeks = sorted(grouped_issues.keys(), key=lambda x: datetime.strptime(x.split(' - ')[0], '%d-%m-%Y'))
-
-    # Write to Markdown file
+    # Write to Markdown file as a bulleted list
     with open(output_file, 'w', encoding='utf-8') as f:
-        # Table Header
-        f.write("| Issues |\n")
-        f.write("| --- |\n")
-        
-        for week in sorted_weeks:
-            # Week Header Row
-            f.write(f"| **Week: {week}** |\n")
+        for issue in issues:
+            status = issue.fields.status.name
+            key = issue.key
+            summary = issue.fields.summary
             
-            # Issue Rows
-            for issue in grouped_issues[week]:
-                key = issue.key
-                summary = issue.fields.summary.replace('|', r'\|')
-                status = issue.fields.status.name
-                f.write(f"| {key} - {summary} - {status} |\n")
+            # Pad status for consistent width
+            padded_status = status.ljust(max_status_len)
+            f.write(f"- [{padded_status}] {key} - {summary}\n")
