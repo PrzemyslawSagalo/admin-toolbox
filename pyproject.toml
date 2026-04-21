@@ -12,7 +12,7 @@ requires-python = ">=3.11"
 dependencies = [
     "jira==3.8.0",
     "click==8.1.7",
-    "python-dotenv==1.0.1"
+    "python-dotenv==1.2.2"
 ]
 
 [project.scripts]
