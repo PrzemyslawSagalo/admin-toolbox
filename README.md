@@ -1,5 +1,7 @@
 # Admin Toolbox
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 A collection of administration utility tools for various services.
 
 ## Installation
@@ -37,3 +39,6 @@ admin-toolbox jira-report --projects PROJ1 --projects PROJ2 --start-date 2024-01
 - `--end-date`: (Optional) End date for filtering closed/resolved tasks in `YYYY-MM-DD` format. Defaults to the last day (Sunday) of the current week.
 - `--output`, `-o`: (Optional) Output Markdown file name. Defaults to `jira_report.md`.
 
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
